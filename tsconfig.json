@@ -1,16 +1,19 @@
 {
   "compilerOptions": {
     "baseUrl": ".",
+    "outDir": "dist",
     "inlineSourceMap": true,
     "inlineSources": true,
     "module": "ESNext",
     "target": "ES6",
+    "jsx": "react-jsx",
     "allowJs": true,
     "noImplicitAny": true,
     "moduleResolution": "node",
     "importHelpers": true,
     "isolatedModules": true,
     "strictNullChecks": true,
+    "allowSyntheticDefaultImports": true,
     "lib": [
       "DOM",
       "ES5",
@@ -19,6 +22,7 @@
     ]
   },
   "include": [
-    "**/*.ts"
+    "**/*.ts",
+    "src/main.tsx"
   ]
 }
