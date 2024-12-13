@@ -1,11 +1,11 @@
 {
-	"id": "sample-plugin",
-	"name": "Sample Plugin",
-	"version": "1.0.0",
-	"minAppVersion": "0.15.0",
-	"description": "Demonstrates some of the capabilities of the Obsidian API.",
-	"author": "Obsidian",
-	"authorUrl": "https://obsidian.md",
-	"fundingUrl": "https://obsidian.md/pricing",
-	"isDesktopOnly": false
+  "id": "image-picker",
+  "name": "Image Picker",
+  "version": "1.0.0",
+  "minAppVersion": "0.15.0",
+  "description": "Adds a UI panel for quickly selecting images that are in your vault.",
+  "author": "ari.the.elk.wtf",
+  "authorUrl": "https://ari.the.elk.wtf",
+  "fundingUrl": "https://ari.the.elk.wtf/Donate",
+  "isDesktopOnly": false
 }
