@@ -1,7 +1,7 @@
 import { createContext, useContext } from 'react'
 import { App } from 'obsidian'
-import ImagePicker from './main'
-import { IndexerNode } from './Indexer'
+import ImagePicker from '../main'
+import { IndexerNode } from '../backend/Indexer'
 
 interface ImagePickerContextType {
   app: App

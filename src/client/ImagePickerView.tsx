@@ -1,13 +1,13 @@
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react'
 import { useApp, useFiles, usePlugin } from './ImagePickerContext'
 import { debounce } from 'lodash'
-import { getSizeInKb } from './utils'
-import { TFile } from 'obsidian'
-import { IndexerNode } from './Indexer'
+import { copyToClipboard, getSizeInKb, nodeToEmbed } from '../utils'
+import { Notice, TFile } from 'obsidian'
+import { AbstractIndexerNode, IndexerNode } from '../backend/Indexer'
 
-const ROW_HEIGHT = 100
+export const ROW_HEIGHT = 100
 
-const MOBILE_MAX_FILE_SIZE = 200
+const MOBILE_MAX_FILE_SIZE = 5000
 const DESKTOP_MAX_FILE_SIZE = 5000
 
 const queryTokens = ['ext']
@@ -55,18 +55,30 @@ export const ImagePickerView = () => {
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(0)
 
+  const prevColumns = useRef(0)
   const [columns, setColumns] = useState(0)
   const gridRef = useRef<HTMLDivElement | null>(null)
 
-  const indexerToFile = useCallback(
-    async (indexerNode: IndexerNode) => {
-      const file = app.vault.getAbstractFileByPath(indexerNode.path)
-      if (!file || !(file instanceof TFile)) {
-        return null
+  useEffect(() => {
+    if (columns !== prevColumns.current) {
+      setLoadedImages({})
+      prevColumns.current = columns
+    }
+  }, [columns])
+
+  const trashNode = useCallback(
+    async (file: IndexerNode | AbstractIndexerNode) => {
+      try {
+        await app.vault.trash(
+          app.vault.getAbstractFileByPath(file.path)!,
+          false
+        )
+        await plugin.indexer.removeIndex(file.path)
+      } catch (e) {
+        console.error('Failed to trash node:', e)
       }
-      return file
     },
-    [app.vault]
+    [app.vault, plugin.indexer]
   )
 
   const filterImages = useMemo(
@@ -75,7 +87,7 @@ export const ImagePickerView = () => {
         setSearchQuery(tokenizeSearchQuery(query))
         setCurrentPage(1)
         setNextImageIndex(0)
-        setLoadedImages(new Set())
+        setLoadedImages({})
       }, 500),
     []
   )
@@ -177,7 +189,7 @@ export const ImagePickerView = () => {
     setCurrentPage(1)
   }, [searchQuery])
 
-  const paginatedImages = useMemo(() => {
+  const paginatedImages = useMemo((): IndexerNode[] => {
     const startIndex = (currentPage - 1) * itemsPerPage
     const endIndex = startIndex + itemsPerPage
     return filteredImages.slice(startIndex, endIndex)
@@ -187,24 +199,28 @@ export const ImagePickerView = () => {
 
   const handlePrevPage = () => {
     setNextImageIndex(0)
-    setLoadedImages(new Set())
+    setLoadedImages({})
     setCurrentPage((prev) => Math.max(prev - 1, 1))
   }
 
   const handleNextPage = () => {
     setNextImageIndex(0)
-    setLoadedImages(new Set())
+    setLoadedImages({})
     setCurrentPage((prev) => Math.min(prev + 1, totalPages))
   }
 
-  const [loadedImages, setLoadedImages] = useState(new Set())
+  const [loadedImages, setLoadedImages] = useState<Record<string, string>>({})
   const [nextImageIndex, setNextImageIndex] = useState(0)
 
+  /*
   useEffect(() => {
     if (nextImageIndex < paginatedImages.length) {
       const file = paginatedImages[nextImageIndex]
+
       const img = new Image()
-      img.src = app.vault.getResourcePath(file as any)
+      img.src = file.thumbnail
+        ? await plugin.indexer.getThumbnail(file)
+        : app.vault.getResourcePath(file as any)
       const onLoad = () => {
         setLoadedImages((prev) => new Set(prev).add(file.path))
         setNextImageIndex((prev) => prev + 1)
@@ -225,6 +241,43 @@ export const ImagePickerView = () => {
       }
     }
   }, [app.vault, nextImageIndex, paginatedImages, plugin.indexer])
+*/
+
+  const loadNextImage = useCallback(
+    async (imageIndex: number) => {
+      if (imageIndex < paginatedImages.length) {
+        const file = await plugin.indexer.getAbstractNode(
+          paginatedImages[imageIndex]
+        )
+        const img = new Image()
+        img.src = file.thumbnail.data
+
+        const onLoad = () => {
+          setLoadedImages((prev) => ({
+            ...prev,
+            [file.path]: file.thumbnail.data,
+          }))
+          loadNextImage(imageIndex + 1)
+        }
+
+        const handleErrors = () => {
+          console.warn('FAILED:', img.src)
+          setNextImageIndex((prev) => prev + 1)
+          loadNextImage(imageIndex + 1)
+        }
+
+        img.addEventListener('load', onLoad)
+        img.addEventListener('error', handleErrors)
+      }
+    },
+    [paginatedImages, plugin.indexer]
+  )
+
+  useEffect(() => {
+    if (Object.keys(loadedImages).length === 0) {
+      loadNextImage(nextImageIndex)
+    }
+  }, [loadNextImage, loadedImages, nextImageIndex])
 
   return (
     <>
@@ -262,15 +315,42 @@ export const ImagePickerView = () => {
                 gridColumn: (i % columns) + 1,
               }}
             >
-              {loadedImages.has(file.path) ? (
+              <select
+                onChange={async (e) => {
+                  switch (e.target.value) {
+                    case 'copy':
+                      copyToClipboard(nodeToEmbed(file))
+                      new Notice('Copied image embed to clipboard')
+                      break
+                    case 'path':
+                      copyToClipboard(file.path)
+                      new Notice('Copied image path to clipboard')
+                      break
+                    case 'delete':
+                      await trashNode(file)
+                      new Notice(`Moved ${file.name} to trash`)
+                      break
+                    default:
+                      break
+                  }
+                }}
+              >
+                <option disabled selected>
+                  {file.name}
+                </option>
+                <option value="copy">Copy Image Embed</option>
+                <option value="path">Copy Image Path</option>
+                <option value="delete">Delete Image</option>
+              </select>
+              {Object.keys(loadedImages).includes(file.path) ? (
                 <img
-                  src={app.vault.getResourcePath(file as any)}
+                  src={loadedImages[file.path]}
                   alt={file.name}
                   style={{ width: '100%', height: '100%' }}
                   loading="lazy"
                 />
               ) : (
-                <div className="image-placeholder">Loading...</div>
+                <div className="image-placeholder">⏳</div>
               )}
             </div>
           ))}
