@@ -73,7 +73,6 @@ export class Indexer {
   }
 
   log = (...args: any[]) => {
-    if (process.env.NODE_ENV === 'production') return
     this.plugin.log('Indexer -> ', ...args)
   }
 
@@ -82,6 +81,13 @@ export class Indexer {
   }
 
   getThumbnail = async (node: IndexerNode): Promise<Thumbnail> => {
+    if (node.extension === 'gif' && this.plugin.settings?.animateGifs) {
+      return {
+        id: 'gif',
+        data: node.uri,
+      }
+    }
+
     const cachedThumbnail =
       node.thumbnail &&
       (await this.db.thumbnails.where('id').equals(node.thumbnail).first())
@@ -155,8 +161,18 @@ export class Indexer {
    */
   removeIndex = async (path: string) => {
     this.log('Removing index:', path)
+    const node = await this.db.index.get(path)
+    delete this.memory[path]
     await this.db.index.delete(path)
+    if (node?.thumbnail) {
+      await this.db.thumbnails.delete(node.thumbnail)
+    }
     this.notifySubscribers()
+    this.backgrounder.enqueue({
+      type: 'saveIndex',
+      disableDoubleQueue: true,
+      action: this.saveIndex,
+    })
   }
 
   getIndex = async (): Promise<IndexerRoot> => {
@@ -201,12 +217,15 @@ export class Indexer {
 
   subscribe(callback: (index: IndexerRoot) => void) {
     this.subscribers = [callback]
+    return () => {
+      this.subscribers = this.subscribers.filter((cb) => cb !== callback)
+    }
   }
 
-  notifySubscribers = debounce((index?: IndexerRoot) => {
+  notifySubscribers = (index?: IndexerRoot) => {
     this.log('Notifying subscribers:', this.subscribers.length)
     this.subscribers.forEach(async (callback) =>
       callback(index || (await this.getIndex()))
     )
-  }, 2000)
+  }
 }

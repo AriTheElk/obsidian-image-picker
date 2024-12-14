@@ -1,9 +1,10 @@
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react'
 import { useApp, useFiles, usePlugin } from './ImagePickerContext'
-import { debounce } from 'lodash'
+import { debounce, isEqual, set, truncate } from 'lodash'
 import { copyToClipboard, getSizeInKb, nodeToEmbed } from '../utils'
 import { Notice, TFile } from 'obsidian'
 import { AbstractIndexerNode, IndexerNode } from '../backend/Indexer'
+import { deepStrictEqual } from 'assert'
 
 export const ROW_HEIGHT = 100
 
@@ -45,6 +46,7 @@ export const ImagePickerView = () => {
   const plugin = usePlugin()
   const app = useApp()
   const images = useFiles()
+  const cachedImages = useRef<IndexerNode[]>([])
   const [searchInput, setSearchInput] = useState('')
   const [searchQuery, setSearchQuery] = useState<
     ReturnType<typeof tokenizeSearchQuery>
@@ -212,62 +214,32 @@ export const ImagePickerView = () => {
   const [loadedImages, setLoadedImages] = useState<Record<string, string>>({})
   const [nextImageIndex, setNextImageIndex] = useState(0)
 
-  /*
-  useEffect(() => {
-    if (nextImageIndex < paginatedImages.length) {
-      const file = paginatedImages[nextImageIndex]
-
-      const img = new Image()
-      img.src = file.thumbnail
-        ? await plugin.indexer.getThumbnail(file)
-        : app.vault.getResourcePath(file as any)
-      const onLoad = () => {
-        setLoadedImages((prev) => new Set(prev).add(file.path))
-        setNextImageIndex((prev) => prev + 1)
-      }
-
-      const handleErrors = () => {
-        console.warn('FAILED:', img.src)
-        plugin.indexer.removeIndex(file.path)
-        setNextImageIndex((prev) => prev + 1)
-      }
-
-      img.addEventListener('load', onLoad)
-      img.addEventListener('error', handleErrors)
-
-      return () => {
-        img.removeEventListener('load', onLoad)
-        img.removeEventListener('error', handleErrors)
-      }
-    }
-  }, [app.vault, nextImageIndex, paginatedImages, plugin.indexer])
-*/
-
   const loadNextImage = useCallback(
     async (imageIndex: number) => {
-      if (imageIndex < paginatedImages.length) {
-        const file = await plugin.indexer.getAbstractNode(
-          paginatedImages[imageIndex]
-        )
-        const img = new Image()
-        img.src = file.thumbnail.data
+      try {
+        if (imageIndex < paginatedImages.length) {
+          const file = await plugin.indexer.getAbstractNode(
+            paginatedImages[imageIndex]
+          )
+          const img = new Image()
+          img.src = file.thumbnail.data
 
-        const onLoad = () => {
-          setLoadedImages((prev) => ({
-            ...prev,
-            [file.path]: file.thumbnail.data,
-          }))
-          loadNextImage(imageIndex + 1)
+          const onLoad = () => {
+            setLoadedImages((prev) => ({
+              ...prev,
+              [file.path]: file.thumbnail.data,
+            }))
+            loadNextImage(imageIndex + 1)
+          }
+
+          img.addEventListener('load', onLoad)
+          // img.addEventListener('error', handleErrors)
         }
-
-        const handleErrors = () => {
-          console.warn('FAILED:', img.src)
-          setNextImageIndex((prev) => prev + 1)
-          loadNextImage(imageIndex + 1)
-        }
-
-        img.addEventListener('load', onLoad)
-        img.addEventListener('error', handleErrors)
+      } catch (_) {
+        console.warn('FAILED:', paginatedImages[imageIndex])
+        plugin.indexer.removeIndex(paginatedImages[imageIndex].path)
+        setNextImageIndex((prev) => prev + 1)
+        loadNextImage(imageIndex + 1)
       }
     },
     [paginatedImages, plugin.indexer]
@@ -278,6 +250,16 @@ export const ImagePickerView = () => {
       loadNextImage(nextImageIndex)
     }
   }, [loadNextImage, loadedImages, nextImageIndex])
+
+  useEffect(() => {
+    if (!isEqual(images, cachedImages.current)) {
+      console.log('Images changed:', images.length)
+      setLoadedImages({})
+      setNextImageIndex(0)
+      setCurrentPage(1)
+      cachedImages.current = images
+    }
+  }, [images])
 
   return (
     <>
@@ -316,6 +298,7 @@ export const ImagePickerView = () => {
               }}
             >
               <select
+                value="default"
                 onChange={async (e) => {
                   switch (e.target.value) {
                     case 'copy':
@@ -327,6 +310,7 @@ export const ImagePickerView = () => {
                       new Notice('Copied image path to clipboard')
                       break
                     case 'delete':
+                      // removeImage(file)
                       await trashNode(file)
                       new Notice(`Moved ${file.name} to trash`)
                       break
@@ -335,8 +319,10 @@ export const ImagePickerView = () => {
                   }
                 }}
               >
-                <option disabled selected>
-                  {file.name}
+                <option disabled selected value="default">
+                  {truncate(file.name, {
+                    length: 30,
+                  })}
                 </option>
                 <option value="copy">Copy Image Embed</option>
                 <option value="path">Copy Image Path</option>

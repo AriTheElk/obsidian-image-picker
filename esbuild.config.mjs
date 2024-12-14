@@ -66,6 +66,14 @@ const context = await esbuild.context({
           from: ['versions.json'],
           to: ['./versions.json'],
         },
+        {
+          from: ['dist/main.js'],
+          to: ['../main.js'],
+        },
+        {
+          from: ['dist/styles.css'],
+          to: ['../styles.css'],
+        },
       ],
     }),
   ],

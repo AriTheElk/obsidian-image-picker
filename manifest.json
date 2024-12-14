@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "minAppVersion": "0.15.0",
   "description": "Adds a UI panel for quickly selecting images that are in your vault.",
-  "author": "ari.the.elk.wtf",
+  "author": "ari.the.elk",
   "authorUrl": "https://ari.the.elk.wtf",
   "fundingUrl": "https://ari.the.elk.wtf/Donate",
   "isDesktopOnly": false
