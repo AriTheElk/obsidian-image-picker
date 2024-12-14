@@ -9,10 +9,10 @@ import {
   WorkspaceLeaf,
 } from 'obsidian'
 import { Root, createRoot } from 'react-dom/client'
-import { ImagePickerView as ReactImagePickerView } from './ImagePickerView'
-import { ImagePickerContext } from './ImagePickerContext'
-import { debounce, pick } from 'lodash'
-import { Indexer } from './Indexer'
+import { ImagePickerView as ReactImagePickerView } from './client/ImagePickerView'
+import { ImagePickerContext } from './client/ImagePickerContext'
+import { pick } from 'lodash'
+import { Indexer } from './backend/Indexer'
 
 const VALID_IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp']
 
@@ -89,12 +89,23 @@ export class ImagePickerView extends ItemView {
   }
 
   async onOpen() {
-    console.log('Opening root:', this.plugin.images.length)
+    this.plugin.log('Opening root:', this.plugin.images.length)
     await this.mountReact()
 
-    this.plugin.subscribe(() => {
-      console.log('Rerendering root:', this.plugin.images.length)
-      this.mountReact()
+    this.plugin.indexer.subscribe(async (newIndex) => {
+      this.plugin.log('Rerendering root:', Object.keys(newIndex).length)
+      // this.mountReact()
+      this.root?.render(
+        <ImagePickerContext.Provider
+          value={{
+            app: this.app,
+            plugin: this.plugin,
+            files: Object.values(newIndex),
+          }}
+        >
+          <ReactImagePickerView />
+        </ImagePickerContext.Provider>
+      )
     })
   }
 
@@ -116,6 +127,11 @@ export default class ImagePicker extends Plugin {
   settings: ImagePickerSettings
   images: TFile[] = []
   indexer: Indexer = new Indexer(this)
+
+  log = (...args: any[]) => {
+    return
+    console.log('ImagePicker -> ', ...args)
+  }
 
   async onload() {
     await this.loadSettings()
@@ -143,65 +159,6 @@ export default class ImagePicker extends Plugin {
     this.app.vault.off('delete', this.onFileChange)
   }
 
-  getAllImageFiles = (folder: TFolder) => {
-    console.log('Getting all image files...')
-    const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp']
-    const files: TFile[] = []
-
-    const addFiles = (abstractFile: TFile | TFolder) => {
-      if (abstractFile instanceof TFile) {
-        const ext = abstractFile.extension.toLowerCase()
-        if (imageExtensions.includes(ext)) {
-          files.push(abstractFile)
-          this.indexer.setIndex({
-            [abstractFile.path]: {
-              ...pick(abstractFile, [
-                'basename',
-                'extension',
-                'stat',
-                'path',
-                'name',
-              ]),
-              uri: this.app.vault.getResourcePath(abstractFile),
-            },
-          })
-        }
-      } else {
-        abstractFile.children.forEach(addFiles)
-      }
-    }
-
-    addFiles(folder)
-    return files
-  }
-
-  private subscribers: ((images: TFile[]) => void)[] = []
-
-  subscribe(callback: (images: TFile[]) => void) {
-    this.subscribers = [callback]
-  }
-
-  notifySubscribers = debounce(() => {
-    this.subscribers.forEach((callback) => callback(this.images))
-  }, 2000)
-
-  // loadImages = debounce(async () => {
-  //   console.log('Loading images...')
-  //   const folderPath = this.app.vault.getAbstractFileByPath(
-  //     this.settings.imageFolder
-  //   )
-
-  //   if (!folderPath || !(folderPath instanceof TFolder)) {
-  //     console.warn('Image folder not found: ' + this.settings.imageFolder)
-  //     return
-  //   }
-
-  //   const files = await this.getAllImageFiles(folderPath)
-  //   this.images = files
-  //   console.log('Images loaded:', files.length)
-  //   this.notifySubscribers()
-  // }, 500)
-
   onFileChange = async (file: TFile) => {
     if (!this.settings.imageFolder) return
     if (file instanceof TFile) {
@@ -215,7 +172,7 @@ export default class ImagePicker extends Plugin {
             uri: this.app.vault.getResourcePath(file),
           },
         })
-        this.notifySubscribers()
+        this.indexer.notifySubscribers()
       }
     }
   }
@@ -243,12 +200,12 @@ export default class ImagePicker extends Plugin {
   }
 
   async loadSettings() {
-    console.log('Loading settings...')
+    this.log('Loading settings...')
     this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData())
   }
 
   async saveSettings() {
-    console.log('Saving settings:', this.settings)
+    this.log('Saving settings:', this.settings)
     await this.saveData(this.settings)
   }
 }

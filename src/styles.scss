@@ -8,7 +8,7 @@ $footer-height: 40px;
   justify-content: space-between;
   align-items: center;
   flex: 0 0 auto;
-  
+
   .test {
     color: red;
   }
@@ -28,6 +28,7 @@ $footer-height: 40px;
 }
 
 .image-picker-grid {
+  position: relative;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
   grid-gap: 10px;
@@ -35,6 +36,7 @@ $footer-height: 40px;
 }
 
 .image-picker-item {
+  position: relative;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -42,16 +44,32 @@ $footer-height: 40px;
   border-radius: 4px;
   overflow: hidden;
   height: 100px;
+
+  img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+  }
+
+  /**
+  * Invisible select dropdown that appears
+  when the user clicks an image picker item
+  */
+  select {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+
+
+  }
 }
 
 .image-picker-item.skeleton {
   background-color: var(--background-modifier-border);
-}
-
-.image-picker-item img {
-  max-width: 100%;
-  max-height: 100%;
-  object-fit: contain;
 }
 
 .image-picker-pagination {
@@ -69,4 +87,29 @@ $footer-height: 40px;
   padding: 5px 10px;
   font-size: 14px;
   cursor: pointer;
+}
+
+.image-picker-lightbox-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.image-picker-lightbox {
+  position: relative;
+  width: 80%;
+  height: 80%;
+  background-color: white;
+  border-radius: 4px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex: 0 0 auto;
 }
