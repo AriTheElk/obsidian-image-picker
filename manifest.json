@@ -1,7 +1,7 @@
 {
   "id": "image-picker",
   "name": "Image Picker",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "minAppVersion": "0.15.0",
   "description": "Adds a UI panel for quickly selecting images that are in your vault.",
   "author": "ari.the.elk",
