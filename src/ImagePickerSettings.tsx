@@ -6,6 +6,7 @@ export interface ImagePickerSettings {
   imageFolder: string
   animateGifs: boolean
   debugMode: boolean
+  zoom: number
 }
 
 export class ImagePickerSettingTab extends PluginSettingTab {

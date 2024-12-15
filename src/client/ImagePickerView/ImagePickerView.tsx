@@ -1,4 +1,4 @@
-import { debounce, isEqual, truncate } from 'lodash'
+import { debounce, isEqual, throttle, truncate } from 'lodash'
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react'
 import { Notice, TFile } from 'obsidian'
 
@@ -7,8 +7,15 @@ import {
   MOBILE_MAX_FILE_SIZE,
   DESKTOP_MAX_FILE_SIZE,
   ROW_HEIGHT,
+  DEFAULT_SETTINGS,
 } from '../../constants'
-import { copyToClipboard, getSizeInKb, nodeToEmbed } from '../../utils'
+import {
+  calculateGrid,
+  copyToClipboard,
+  getSizeInKb,
+  nodeToEmbed,
+  setGridHeight,
+} from '../../utils'
 import { AbstractIndexerNode, IndexerNode } from '../../backend/Indexer'
 import { useApp, useFiles, usePlugin } from '../ImagePickerContext'
 
@@ -49,7 +56,6 @@ export const ImagePickerView = () => {
   const app = useApp()
   const images = useFiles()
   const cachedImages = useRef<IndexerNode[]>([])
-  const [searchInput, setSearchInput] = useState('')
   const [searchQuery, setSearchQuery] = useState<
     ReturnType<typeof tokenizeSearchQuery>
   >({
@@ -65,6 +71,42 @@ export const ImagePickerView = () => {
 
   const [loadedImages, setLoadedImages] = useState<Record<string, string>>({})
   const [nextImageIndex, setNextImageIndex] = useState(0)
+
+  const [rowHeight, setRowHeight] = useState(
+    (plugin.settings.zoom || DEFAULT_SETTINGS.zoom) * ROW_HEIGHT
+  )
+
+  const [zoom, setZoom] = useState(1)
+
+  const updateZoomSetting = useMemo(
+    () =>
+      debounce((zoom: number) => {
+        plugin.settings.zoom = zoom
+        plugin.backgrounder.enqueue({
+          type: 'saveSettings',
+          disableDoubleQueue: true,
+          action: plugin.saveSettings,
+        })
+      }, 500),
+    [plugin.backgrounder, plugin.saveSettings, plugin.settings]
+  )
+
+  const updateVisualZoom = useCallback(
+    throttle((zoom: number) => {
+      setGridHeight(zoom)
+      setRowHeight(zoom * ROW_HEIGHT)
+    }, 50),
+    []
+  )
+
+  const onZoom = useCallback(
+    (zoom: number) => {
+      setZoom(zoom)
+      updateZoomSetting(zoom)
+      updateVisualZoom(zoom)
+    },
+    [updateVisualZoom, updateZoomSetting]
+  )
 
   useEffect(() => {
     if (columns !== prevColumns.current) {
@@ -136,37 +178,18 @@ export const ImagePickerView = () => {
       .sort((a, b) => b.stat.ctime - a.stat.ctime)
   }, [images, app.vault, searchQuery])
 
-  const calculateGrid = useCallback(
-    (containerSize: number, assetSize: number) => {
-      if (gridRef.current) {
-        const computedStyle = window.getComputedStyle(gridRef.current)
-        const gap = parseInt(computedStyle.getPropertyValue('gap'), 10) || 0
-        const totalGapsWidth =
-          containerSize < assetSize * 2 + gap
-            ? 0
-            : gap * (Math.floor(containerSize / assetSize) - 1)
-        const newColumns = Math.floor(
-          (containerSize - totalGapsWidth) / assetSize
-        )
-        return newColumns
-      }
-      return 0
-    },
-    []
-  )
-
   const updateCalculations = useCallback(
     (container: HTMLDivElement) => {
       const height = container.clientHeight
       const width = container.clientWidth
 
       const newRows = Math.floor(height / ROW_HEIGHT)
-      const newColumns = calculateGrid(width, 100)
+      const newColumns = calculateGrid(gridRef, width, rowHeight)
 
       setColumns(newColumns)
       setItemsPerPage(newRows * newColumns)
     },
-    [calculateGrid]
+    [rowHeight]
   )
 
   useEffect(() => {
@@ -354,6 +377,8 @@ export const ImagePickerView = () => {
         current={currentPage}
         onNext={handleNextPage}
         onPrev={handlePrevPage}
+        zoom={zoom}
+        onZoom={onZoom}
       />
     </>
   )
