@@ -1,0 +1,75 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to bump (major, minor, patch)'
+        required: true
+        default: 'patch'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v2
+      with:
+        node-version: '22'
+
+    - name: Install dependencies
+      run: npm install
+
+    - name: Bump version
+      id: bump_version
+      run: |
+        CURRENT_VERSION=$(node -p "require('./package.json').version")
+        npm version ${{ github.event.inputs.version }}
+        NEW_VERSION=$(node -p "require('./package.json').version")
+        echo "::set-output name=new_version::$NEW_VERSION"
+
+    - name: Push changes
+      run: |
+        git push origin HEAD --follow-tags
+
+    - name: Create GitHub release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: v${{ steps.bump_version.outputs.new_version }}
+        release_name: Release ${{ steps.bump_version.outputs.new_version }}
+        draft: false
+        prerelease: false
+
+    - name: Build project
+      run: npm run build
+
+    - name: Upload release assets
+      uses: actions/upload-release-asset@v1
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./dist/main.js
+        asset_name: main.js
+        asset_content_type: application/javascript
+
+    - name: Upload styles
+      uses: actions/upload-release-asset@v1
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./dist/styles.css
+        asset_name: styles.css
+        asset_content_type: text/css
+
+    - name: Upload manifest
+      uses: actions/upload-release-asset@v1
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./dist/manifest.json
+        asset_name: manifest.json
+        asset_content_type: application/json
