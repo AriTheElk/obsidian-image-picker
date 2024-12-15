@@ -1,12 +1,13 @@
-import esbuild from 'esbuild'
 import process from 'process'
+import { promises as fs } from 'fs'
+import path from 'path'
+import { readFileSync } from 'fs'
+
+import esbuild from 'esbuild'
 import builtins from 'builtin-modules'
 import { copy } from 'esbuild-plugin-copy'
 import { sassPlugin } from 'esbuild-sass-plugin'
 import { config } from 'dotenv'
-import { promises as fs } from 'fs'
-import path from 'path'
-import { readFileSync } from 'fs'
 
 config() // Load .env file
 
@@ -21,6 +22,7 @@ if you want to view the source, please visit the github repository of this plugi
 `
 
 const prod = process.argv[2] === 'production'
+const move = process.argv[3] === 'move'
 
 const context = await esbuild.context({
   banner: {
@@ -66,14 +68,6 @@ const context = await esbuild.context({
           from: ['versions.json'],
           to: ['./versions.json'],
         },
-        {
-          from: ['dist/main.js'],
-          to: ['../main.js'],
-        },
-        {
-          from: ['dist/styles.css'],
-          to: ['../styles.css'],
-        },
       ],
     }),
   ],
@@ -81,10 +75,10 @@ const context = await esbuild.context({
 
 if (prod) {
   await context.rebuild()
-  if (process.env.OBSIDIAN_VAULT_PATH) {
+  if (process.env.OBSIDIAN_VAULT_PATH && move) {
     const destPath = path.join(
       process.env.OBSIDIAN_VAULT_PATH,
-      `.obsidian/plugins/${packageName}`
+      `.obsidian/plugins/${packageName}-dev`
     )
     console.log(`Copying to ${destPath}`)
     await fs.mkdir(destPath, { recursive: true })

@@ -1,14 +1,16 @@
 import { TFile } from 'obsidian'
-import ImagePicker from '../main'
 import { debounce, merge } from 'lodash'
+import { v4 } from 'uuid'
 import Dexie from 'dexie'
+
 import {
   fetchImageFile,
   getImageFileSize,
   imageToArrayBuffer,
   makeThumbnail,
 } from '../utils'
-import { v4 } from 'uuid'
+import ImagePicker from '../main'
+
 import { Backgrounder } from './Backgrounder'
 
 export interface IndexerRoot {

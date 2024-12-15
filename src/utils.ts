@@ -1,6 +1,7 @@
 import { readAndCompressImage } from 'browser-image-resizer'
-import { ROW_HEIGHT } from './client/ImagePickerView'
+
 import { AbstractIndexerNode, IndexerNode } from './backend/Indexer'
+import { ROW_HEIGHT } from './constants'
 
 export const getSizeInKb = (size: number): number => {
   return Math.round(size / 1024)
