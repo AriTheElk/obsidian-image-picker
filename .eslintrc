@@ -8,6 +8,10 @@
     "@typescript-eslint",
     "import"
   ],
+  "ignorePatterns": [
+    "node_modules/",
+    "dist/"
+  ],
   "extends": [
     "eslint:recommended",
     "plugin:@typescript-eslint/eslint-recommended",

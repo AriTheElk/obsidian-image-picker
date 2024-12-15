@@ -4,6 +4,10 @@
   "description": "Easily find any image inside your vault",
   "main": "dist/main.js",
   "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
+    "lint:fix": "eslint . --ext .js,.jsx,.ts,.tsx --fix",
+    "ci": "npm run typecheck && npm run lint",
     "dev": "node esbuild.config.mjs",
     "prebuild": "rimraf dist",
     "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",

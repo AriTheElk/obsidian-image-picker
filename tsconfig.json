@@ -24,5 +24,9 @@
   "include": [
     "**/*.ts",
     "src/main.tsx"
+  ],
+  "ignore": [
+    "node_modules",
+    "dist"
   ]
 }
