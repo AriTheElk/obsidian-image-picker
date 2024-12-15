@@ -55,5 +55,5 @@ export const DEFAULT_SETTINGS: ImagePickerSettings = {
  * The zoom is applied to the baseline ROW_HEIGHT
  * to determine the thumbnail size.
  */
-export const MIN_THUMBNAIL_ZOOM = 0.8
+export const MIN_THUMBNAIL_ZOOM = 0.5
 export const MAX_THUMBNAIL_ZOOM = 2

@@ -72,11 +72,18 @@ export const ImagePickerView = () => {
   const [loadedImages, setLoadedImages] = useState<Record<string, string>>({})
   const [nextImageIndex, setNextImageIndex] = useState(0)
 
-  const [rowHeight, setRowHeight] = useState(
-    (plugin.settings.zoom || DEFAULT_SETTINGS.zoom) * ROW_HEIGHT
+  const hydratedCSS = useRef(false)
+  const [zoom, setZoom] = useState(
+    plugin.settings.zoom || DEFAULT_SETTINGS.zoom
   )
+  const [rowHeight, setRowHeight] = useState(zoom * ROW_HEIGHT)
 
-  const [zoom, setZoom] = useState(1)
+  useEffect(() => {
+    if (!hydratedCSS.current) {
+      setGridHeight(zoom)
+      hydratedCSS.current = true
+    }
+  }, [zoom])
 
   const updateZoomSetting = useMemo(
     () =>
@@ -182,12 +189,9 @@ export const ImagePickerView = () => {
     (container: HTMLDivElement) => {
       const height = container.clientHeight
       const width = container.clientWidth
-
-      const newRows = Math.floor(height / ROW_HEIGHT)
-      const newColumns = calculateGrid(gridRef, width, rowHeight)
-
-      setColumns(newColumns)
-      setItemsPerPage(newRows * newColumns)
+      const [col, row] = calculateGrid(gridRef, [width, height], rowHeight)
+      setColumns(col)
+      setItemsPerPage(col * row)
     },
     [rowHeight]
   )
@@ -294,13 +298,11 @@ export const ImagePickerView = () => {
    */
   useEffect(() => {
     if (!isEqual(images, cachedImages.current)) {
-      console.log('Images changed:', images.length)
       setLoadedImages({})
       setNextImageIndex(0)
-      setCurrentPage(1)
       cachedImages.current = images
     }
-  }, [images])
+  }, [images, totalPages])
 
   return (
     <>

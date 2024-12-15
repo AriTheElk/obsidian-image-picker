@@ -74,3 +74,37 @@ export const nodeToEmbed = (
 export const truncate = (text: string, length: number): string => {
   return text.length > length ? `${text.substring(0, length)}...` : text
 }
+
+export const setGridHeight = (zoom: number): void => {
+  document.documentElement.style.setProperty(
+    '--image-picker-grid-height',
+    ROW_HEIGHT * zoom + 'px'
+  )
+}
+
+/**
+ * Returns the number of columns and rows that can fit in the container
+ *
+ * The height is always fixed, so we first calculate the rnumber of
+ * columns that can fit in the container, then calculate the number of
+ * rows based on the container size and the asset height.
+ */
+export const calculateGrid = (
+  gridRef: React.RefObject<HTMLDivElement | null>,
+  containerSize: [number, number],
+  assetHeight: number
+): [number, number] => {
+  if (gridRef.current) {
+    const [containerWidth, containerHeight] = containerSize
+    const computedStyle = window.getComputedStyle(gridRef.current)
+    const gap = parseInt(computedStyle.getPropertyValue('gap'), 10) || 0
+    const totalGapsWidth =
+      containerWidth < assetHeight * 2 + gap
+        ? 0
+        : gap * (Math.floor(containerWidth / assetHeight) - 1)
+    const columns = Math.floor((containerWidth - totalGapsWidth) / assetHeight)
+    const rows = Math.floor(containerHeight / (assetHeight + gap))
+    return [columns, rows]
+  }
+  return [0, 0]
+}

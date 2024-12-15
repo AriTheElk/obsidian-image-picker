@@ -19,7 +19,7 @@ export const Pagination: FC<PaginationProps> = ({
   onZoom,
 }) => {
   return (
-    <div className="image-picker-pagination">
+    <div className="image-picker-footer">
       <button onClick={onPrev} disabled={current === 1}>
         Previous
       </button>
@@ -27,7 +27,7 @@ export const Pagination: FC<PaginationProps> = ({
         type="range"
         min={MIN_THUMBNAIL_ZOOM}
         max={MAX_THUMBNAIL_ZOOM}
-        step={0.1}
+        step={0.025}
         value={zoom}
         onChange={(e) => onZoom(parseFloat(e.target.value))}
       />
