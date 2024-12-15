@@ -12,11 +12,13 @@ import {
   VALID_IMAGE_EXTENSIONS,
   VIEW_TYPE_IMAGE_PICKER,
 } from './constants'
+import { Backgrounder } from './backend/Backgrounder'
 
 export class ImagePicker extends Plugin {
   settings: ImagePickerSettings
   images: TFile[] = []
   indexer: Indexer = new Indexer(this)
+  backgrounder: Backgrounder = new Backgrounder(this)
 
   log = (...args: any[]) => {
     if (this.settings?.debugMode) {
@@ -47,6 +49,7 @@ export class ImagePicker extends Plugin {
     this.app.vault.off('create', this.onFileCreate)
     this.app.vault.off('modify', this.onFileChange)
     this.app.vault.off('delete', this.onFileDelete)
+    this.backgrounder.clear()
   }
   /**
    * When a file is created, add it to the index and
@@ -129,12 +132,12 @@ export class ImagePicker extends Plugin {
     }
   }
 
-  async loadSettings() {
+  loadSettings = async () => {
     this.log('Loading settings...')
     this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData())
   }
 
-  async saveSettings() {
+  saveSettings = async () => {
     this.log('Saving settings:', this.settings)
     await this.saveData(this.settings)
   }

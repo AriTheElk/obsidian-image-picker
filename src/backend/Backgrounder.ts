@@ -95,4 +95,12 @@ export class Backgrounder {
     this.running = false
     this.run()
   }
+
+  /**
+   * Clears the queue
+   */
+  clear = () => {
+    this.queue = []
+    this.log('Cleared queue')
+  }
 }
