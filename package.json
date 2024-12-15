@@ -37,8 +37,6 @@
     "typescript": "5.7.2"
   },
   "dependencies": {
-    "@emotion/react": "^11.14.0",
-    "@emotion/styled": "^11.14.0",
     "@misskey-dev/browser-image-resizer": "^2024.1.0",
     "@react-hook/size": "^2.1.2",
     "browser-image-resizer": "^2.4.1",
@@ -47,8 +45,6 @@
     "obsidian": "latest",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-lazyload": "^3.2.1",
-    "react-virtualized": "^9.22.5",
     "uuid": "^11.0.3"
   }
 }
