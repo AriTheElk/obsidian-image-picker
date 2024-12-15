@@ -82,9 +82,28 @@ export class ImagePickerSettingTab extends PluginSettingTab {
     containerEl.createEl('hr')
 
     const credits = containerEl.createEl('div')
-    credits.innerHTML = `
-      Built with 💚 by <a href="https://ari.the.elk.wtf">ari.the.elk</a><br />
-      📖 <a href="https://ari.the.elk.wtf/obsidian/plugins/image-picker">documentation</a><br />
-      💝 <a href="https://ari.the.elk.wtf/donate">donate</a>`
+
+    credits
+      .createEl('span', {
+        text: 'Built with 💚 by ',
+      })
+      .createEl('a', {
+        text: 'ari.the.elk',
+        href: 'https://ari.the.elk.wtf',
+      })
+
+    credits.createEl('br')
+
+    credits.createEl('a', {
+      text: '📖 documentation',
+      href: 'https://ari.the.elk.wtf/obsidian/plugins/image-picker',
+    })
+
+    credits.createEl('br')
+
+    credits.createEl('a', {
+      text: '💝 donate',
+      href: 'https://ari.the.elk.wtf/donate',
+    })
   }
 }

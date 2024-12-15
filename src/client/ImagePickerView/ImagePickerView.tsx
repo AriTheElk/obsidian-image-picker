@@ -1,6 +1,6 @@
 import { debounce, isEqual, truncate } from 'lodash'
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react'
-import { Notice } from 'obsidian'
+import { Notice, TFile } from 'obsidian'
 
 import {
   queryTokens,
@@ -107,7 +107,8 @@ export const ImagePickerView = () => {
     const { queryTokens, remainingQuery } = searchQuery
     return images
       .filter((file) => {
-        const resource = app.vault.getResourcePath(file as any).toLowerCase()
+        const tfile = app.vault.getAbstractFileByPath(file.path)
+        const resource = app.vault.getResourcePath(tfile as TFile).toLowerCase()
 
         if (!resource.includes(remainingQuery.toLowerCase())) return false
 
