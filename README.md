@@ -4,6 +4,8 @@ Image Picker is a _blazingly_ fast way to browse and find media in your Obsidian
 
 ![Image Picker Preview](./preview.gif)
 
+🐙 [GitHub](https://github.com/AriTheElk/obsidian-image-picker) | 📖 [Docs](https://ari.the.elk.wtf/obsidian/plugins/image-picker) | 💝 [Donate](https://ari.the.elk.wtf/donate)
+
 # ⚙️ Settings
 
 - **Image Folder**: The highest root folder that you want Image Picker to search for images in. If you store your attachments in a specific folder, please select it for better performance.
