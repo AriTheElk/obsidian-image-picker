@@ -1,13 +1,17 @@
 import { Plugin, TFile, WorkspaceLeaf } from 'obsidian'
 import { pick } from 'lodash'
+
 import { Indexer } from './backend/Indexer'
 import {
-  DEFAULT_SETTINGS,
   ImagePickerSettings,
   ImagePickerSettingTab,
 } from './ImagePickerSettings'
 import { ImagePickerView } from './ImagePickerView'
-import { VALID_IMAGE_EXTENSIONS, VIEW_TYPE_IMAGE_PICKER } from './constants'
+import {
+  DEFAULT_SETTINGS,
+  VALID_IMAGE_EXTENSIONS,
+  VIEW_TYPE_IMAGE_PICKER,
+} from './constants'
 
 export class ImagePicker extends Plugin {
   settings: ImagePickerSettings
@@ -23,7 +27,6 @@ export class ImagePicker extends Plugin {
   async onload() {
     await this.loadSettings()
 
-    // This adds a settings tab so the user can configure various aspects of the plugin
     this.addSettingTab(new ImagePickerSettingTab(this.app, this))
 
     this.addRibbonIcon('image', 'Open Image Picker', async () => {
@@ -45,7 +48,12 @@ export class ImagePicker extends Plugin {
     this.app.vault.off('modify', this.onFileChange)
     this.app.vault.off('delete', this.onFileDelete)
   }
-
+  /**
+   * When a file is created, add it to the index and
+   * immediately notify subscribers.
+   *
+   * @param file the new file
+   */
   onFileCreate = async (file: TFile) => {
     if (file instanceof TFile) {
       if (
@@ -64,6 +72,11 @@ export class ImagePicker extends Plugin {
     }
   }
 
+  /**
+   * When a file is deleted, remove it from the index and
+   * immediately notify subscribers.
+   * @param file the deleted file
+   */
   onFileDelete = async (file: TFile) => {
     if (file instanceof TFile) {
       if (
@@ -77,6 +90,11 @@ export class ImagePicker extends Plugin {
     }
   }
 
+  /**
+   * When a file is modified, update the index and
+   * immediately notify subscribers.
+   * @param file the modified file
+   */
   onFileChange = async (file: TFile) => {
     if (file instanceof TFile) {
       if (
@@ -101,16 +119,11 @@ export class ImagePicker extends Plugin {
     const leaves = workspace.getLeavesOfType(VIEW_TYPE_IMAGE_PICKER)
 
     if (leaves.length > 0) {
-      // A leaf with our view already exists, use that
       leaf = leaves[0]
     } else {
-      // Our view could not be found in the workspace, create a new leaf
-      // in the right sidebar for it
       leaf = workspace.getRightLeaf(false)
       await leaf?.setViewState({ type: VIEW_TYPE_IMAGE_PICKER, active: true })
     }
-
-    // "Reveal" the leaf in case it is in a collapsed sidebar
     if (leaf) {
       workspace.revealLeaf(leaf)
     }

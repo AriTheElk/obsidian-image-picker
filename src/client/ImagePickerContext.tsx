@@ -1,9 +1,10 @@
 import { createContext, useContext } from 'react'
 import { App } from 'obsidian'
+
 import ImagePicker from '../main'
 import { IndexerNode } from '../backend/Indexer'
 
-interface ImagePickerContextType {
+export interface ImagePickerContextType {
   app: App
   plugin: ImagePicker
   files: IndexerNode[]

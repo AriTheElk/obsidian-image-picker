@@ -1,12 +1,17 @@
-import React from 'react'
 import { ItemView, WorkspaceLeaf } from 'obsidian'
 import { Root, createRoot } from 'react-dom/client'
+
 import { ImagePickerView as ReactImagePickerView } from './client/ImagePickerView'
-import { ImagePickerContext } from './client/ImagePickerContext'
+import {
+  ImagePickerContext,
+  ImagePickerContextType,
+} from './client/ImagePickerContext'
 import { ImagePicker } from './ImagePicker'
 import { VIEW_TYPE_IMAGE_PICKER } from './constants'
 
-// Image picker view class
+/**
+ * The main view for the image picker.
+ */
 export class ImagePickerView extends ItemView {
   root: Root | null = null
 
@@ -26,16 +31,18 @@ export class ImagePickerView extends ItemView {
     return 'image'
   }
 
-  mountReact = async () => {
+  createRoot = () => {
     this.root = createRoot(this.containerEl.children[1])
-    this.root.render(
-      <ImagePickerContext.Provider
-        value={{
-          app: this.app,
-          plugin: this.plugin,
-          files: Object.values(await this.plugin.indexer.getIndex()),
-        }}
-      >
+  }
+
+  destroyRoot = () => {
+    this.root = null
+    this.containerEl.children[1].empty()
+  }
+
+  mountReact = (context: ImagePickerContextType) => {
+    this.root?.render(
+      <ImagePickerContext.Provider value={context}>
         <ReactImagePickerView />
       </ImagePickerContext.Provider>
     )
@@ -43,31 +50,30 @@ export class ImagePickerView extends ItemView {
 
   unmountReact = () => {
     this.root?.unmount()
-    this.containerEl.children[1].empty()
   }
 
   async onOpen() {
     this.plugin.log('Opening root:', this.plugin.images.length)
-    await this.mountReact()
+    this.createRoot()
+    this.mountReact({
+      app: this.app,
+      plugin: this.plugin,
+      files: Object.values(await this.plugin.indexer.getIndex()),
+    })
 
     this.plugin.indexer.subscribe(async (newIndex) => {
       this.plugin.log('Rerendering root:', Object.keys(newIndex).length)
-      // this.mountReact()
-      this.root?.render(
-        <ImagePickerContext.Provider
-          value={{
-            app: this.app,
-            plugin: this.plugin,
-            files: Object.values(newIndex),
-          }}
-        >
-          <ReactImagePickerView />
-        </ImagePickerContext.Provider>
-      )
+      this.mountReact({
+        app: this.app,
+        plugin: this.plugin,
+        files: Object.values(newIndex),
+      })
     })
   }
 
   async onClose() {
-    this.root?.unmount()
+    this.plugin.log('Closing root')
+    this.unmountReact()
+    this.destroyRoot()
   }
 }

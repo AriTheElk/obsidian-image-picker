@@ -1,16 +1,11 @@
 import { App, PluginSettingTab, Setting } from 'obsidian'
+
 import { ImagePicker } from './ImagePicker'
 
 export interface ImagePickerSettings {
   imageFolder: string
   animateGifs: boolean
   debugMode: boolean
-}
-
-export const DEFAULT_SETTINGS: ImagePickerSettings = {
-  imageFolder: '',
-  animateGifs: false,
-  debugMode: false,
 }
 
 export class ImagePickerSettingTab extends PluginSettingTab {
