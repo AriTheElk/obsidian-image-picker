@@ -8,9 +8,9 @@ export const Search: FC<SearchProps> = ({ onSearch }) => {
   const [searchInput, setSearchInput] = useState('')
 
   return (
-    <div className="image-picker-controls">
+    <div className="image-picker-controls search-input-container">
       <input
-        type="text"
+        type="search"
         placeholder="Search images..."
         className="image-picker-search"
         value={searchInput}

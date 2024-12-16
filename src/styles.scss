@@ -4,15 +4,17 @@ $footer-height: 40px;
 .image-picker-responsive-container {
   width: 100%;
   height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 .image-picker-controls {
   width: 100%;
   height: $header-height;
-  display: flex;
   justify-content: space-between;
   align-items: center;
   flex: 0 0 auto;
+  
 }
 
 .image-picker-search {
@@ -24,7 +26,7 @@ $footer-height: 40px;
 
 .image-picker-scroll-view {
   width: 100%;
-  height: calc(100% - #{$header-height} - #{$footer-height});
+  flex: 1 1 auto;
   overflow-y: auto;
 }
 
