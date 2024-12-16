@@ -23,6 +23,7 @@
   },
   "include": [
     "**/*.ts",
+    "**/*.tsx",
     "src/main.tsx"
   ],
   "ignore": [
