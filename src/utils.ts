@@ -1,7 +1,7 @@
 import { readAndCompressImage } from 'browser-image-resizer'
 
 import { AbstractIndexerNode, IndexerNode } from './backend/Indexer'
-import { ROW_HEIGHT } from './constants'
+import { queryTokens, ROW_HEIGHT } from './constants'
 
 export const getSizeInKb = (size: number): number => {
   return Math.round(size / 1024)
@@ -107,4 +107,32 @@ export const calculateGrid = (
     return [columns, rows]
   }
   return [0, 0]
+}
+
+/**
+ * Searches through a plaintext search query and
+ * returns all of the tokens contained in the query.
+ * Also returns the remaining query after removing
+ * all of the tokens.
+ */
+export const tokenizeSearchQuery = (query: string) => {
+  const tokens = query
+    .split(' ')
+    .map((token) => token.trim())
+    .filter(
+      (token) =>
+        token.includes(':') && queryTokens.includes(token.split(':')[0])
+    )
+  let remainingQuery = ''
+
+  for (const token of query.split(' ')) {
+    if (!tokens.includes(token)) {
+      remainingQuery += token + ' '
+    }
+  }
+
+  return {
+    queryTokens: tokens,
+    remainingQuery: remainingQuery.trim(),
+  }
 }
