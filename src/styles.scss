@@ -10,17 +10,16 @@ $footer-height: 40px;
 
 .image-picker-controls {
   width: 100%;
-  height: $header-height;
   justify-content: space-between;
   align-items: center;
   flex: 0 0 auto;
+  margin-bottom: 0.5rem;
   
 }
 
 .image-picker-search {
   width: 100%;
   padding: 8px;
-  margin-bottom: 12px;
   font-size: 14px;
 }
 

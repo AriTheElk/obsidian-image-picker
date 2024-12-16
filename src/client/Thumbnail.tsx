@@ -13,11 +13,11 @@ interface ThumbnailProps {
    * Callback to for when the thumbnail mounts.
    * @returns {void}
    */
-  onEnqueue: () => void
+  enqueueImage: (node: IndexerNode) => void
   /**
    * Callback to for when the thumbnail should be dequeued.
    */
-  dequeueImage: () => void
+  dequeueImage: (node: IndexerNode) => void
   /**
    * Whether or not the thumbnail should load.
    */
@@ -29,12 +29,12 @@ interface ThumbnailProps {
    * @param {AbstractIndexerNode} file - The file that was loaded.
    * @returns {void}
    */
-  onLoad?: (file: AbstractIndexerNode) => void
+  onLoad?: (node: AbstractIndexerNode) => void
 }
 
 export const Thumbnail: FC<ThumbnailProps> = ({
   node,
-  onEnqueue,
+  enqueueImage,
   dequeueImage,
   shouldLoad = false,
   onLoad,
@@ -46,11 +46,17 @@ export const Thumbnail: FC<ThumbnailProps> = ({
   const hasEnqueued = useRef(false)
 
   useEffect(() => {
-    if (!hasEnqueued.current) {
-      onEnqueue()
+    if (!hasEnqueued.current && node) {
+      enqueueImage(node)
       hasEnqueued.current = true
     }
-  }, [onEnqueue])
+  }, [dequeueImage, enqueueImage, node])
+
+  useEffect(() => {
+    return () => {
+      dequeueImage(node)
+    }
+  }, [dequeueImage, node])
 
   const loadImage = useCallback(
     async (node: IndexerNode) => {
@@ -64,13 +70,13 @@ export const Thumbnail: FC<ThumbnailProps> = ({
           img.removeEventListener('load', handleLoad)
           setIsLoading(false)
           onLoad?.(file)
-          dequeueImage()
+          dequeueImage(node)
           setAbstract(file)
         }
 
         img.addEventListener('load', handleLoad)
       } catch (error) {
-        dequeueImage()
+        dequeueImage(node)
         setIsLoading(false)
         console.error('Failed to load image:', error)
       }

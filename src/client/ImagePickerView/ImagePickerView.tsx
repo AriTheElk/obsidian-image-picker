@@ -209,17 +209,17 @@ export const ImagePickerView = () => {
   }, [searchQuery])
 
   const enqueueImage = useCallback(
-    (imagePath: IndexerNode) => {
-      if (imageQueue.includes(imagePath)) {
+    (node: IndexerNode) => {
+      if (imageQueue.includes(node)) {
         return
       }
-      setImageQueue((prev) => [...prev, imagePath])
+      setImageQueue((prev) => [...prev, node])
     },
     [imageQueue]
   )
 
-  const dequeueImage = useCallback(() => {
-    setImageQueue((prev) => prev.slice(1))
+  const dequeueImage = useCallback((node: IndexerNode) => {
+    setImageQueue((prev) => prev.filter((n) => n.path !== node.path))
   }, [])
 
   /**
@@ -237,6 +237,19 @@ export const ImagePickerView = () => {
   return (
     <div className="image-picker-responsive-container">
       <Search onSearch={filterImages} />
+      <div
+        className="search-results-info"
+        style={{ padding: 0, marginBottom: '1rem', borderBottom: 'none' }}
+      >
+        {filteredImages.length ? (
+          <div className="search-results-result-count">
+            {filteredImages.length} images found.{' '}
+            {totalPages > 1 ? `Page ${currentPage} of ${totalPages}` : ''}
+          </div>
+        ) : (
+          <p>No images found</p>
+        )}
+      </div>
       <div
         ref={(ref) => {
           if (!ref) return
@@ -292,9 +305,21 @@ export const ImagePickerView = () => {
                 key={file.path}
                 shouldLoad={imageQueue[0]?.path === file.path}
                 node={file}
-                onEnqueue={() => enqueueImage(file)}
+                enqueueImage={enqueueImage}
                 dequeueImage={dequeueImage}
               />
+            </div>
+          ))}
+          {[...Array(itemsPerPage - paginatedImages.length)].map((_, i) => (
+            <div
+              key={`empty-${i}`}
+              className="image-picker-item"
+              style={{
+                gridRow: Math.floor((i + paginatedImages.length) / columns) + 1,
+                gridColumn: ((i + paginatedImages.length) % columns) + 1,
+              }}
+            >
+              <div className="image-placeholder"></div>
             </div>
           ))}
         </div>
