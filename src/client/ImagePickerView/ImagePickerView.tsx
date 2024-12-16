@@ -18,6 +18,7 @@ import {
 } from '../../utils'
 import { AbstractIndexerNode, IndexerNode } from '../../backend/Indexer'
 import { useApp, useFiles, usePlugin } from '../ImagePickerContext'
+import { Thumbnail } from '../Thumbnail'
 
 import { Pagination } from './Pagination'
 import { Search } from './Search'
@@ -42,7 +43,6 @@ export const ImagePickerView = () => {
   const gridRef = useRef<HTMLDivElement | null>(null)
 
   const [imageQueue, setImageQueue] = useState<IndexerNode[]>([])
-  const [loadedImages, setLoadedImages] = useState<Record<string, string>>({})
 
   const hydratedCSS = useRef(false)
   const [zoom, setZoom] = useState(
@@ -89,7 +89,6 @@ export const ImagePickerView = () => {
 
   useEffect(() => {
     if (columns !== prevColumns.current) {
-      setLoadedImages({})
       prevColumns.current = columns
     }
   }, [columns])
@@ -114,7 +113,6 @@ export const ImagePickerView = () => {
       debounce((query: string) => {
         setSearchQuery(tokenizeSearchQuery(query))
         setCurrentPage(1)
-        setLoadedImages({})
       }, 500),
     []
   )
@@ -196,12 +194,10 @@ export const ImagePickerView = () => {
   const totalPages = Math.ceil(filteredImages.length / itemsPerPage)
 
   const handlePrevPage = () => {
-    setLoadedImages({})
     setCurrentPage((prev) => Math.max(prev - 1, 1))
   }
 
   const handleNextPage = () => {
-    setLoadedImages({})
     setCurrentPage((prev) => Math.min(prev + 1, totalPages))
   }
 
@@ -215,7 +211,6 @@ export const ImagePickerView = () => {
   const enqueueImage = useCallback(
     (imagePath: IndexerNode) => {
       if (imageQueue.includes(imagePath)) {
-        console.log('xx Image already in queue:', imagePath)
         return
       }
       setImageQueue((prev) => [...prev, imagePath])
@@ -227,51 +222,6 @@ export const ImagePickerView = () => {
     setImageQueue((prev) => prev.slice(1))
   }, [])
 
-  const handleImageLoaded = useCallback(
-    (node: AbstractIndexerNode) => {
-      setLoadedImages((prev) => ({
-        ...prev,
-        [node.path]: node.thumbnail.data,
-      }))
-      dequeueImage()
-      setIsLoading(false)
-    },
-    [dequeueImage]
-  )
-
-  const [isLoading, setIsLoading] = useState(false)
-
-  const loadImage = useCallback(
-    async (node: IndexerNode) => {
-      try {
-        if (isLoading) return
-        const file = await plugin.indexer.getAbstractNode(node)
-        const img = new Image()
-        img.src = file.thumbnail.data
-
-        const onLoad = () => {
-          img.removeEventListener('load', onLoad)
-          setIsLoading(false)
-          handleImageLoaded(file)
-        }
-
-        img.addEventListener('load', onLoad)
-      } catch (error) {
-        dequeueImage()
-        setIsLoading(false)
-        console.error('Failed to load image:', error)
-      }
-    },
-    [dequeueImage, handleImageLoaded, isLoading, plugin.indexer]
-  )
-
-  useEffect(() => {
-    if (imageQueue.length > 0 && !isLoading) {
-      setIsLoading(true)
-      loadImage(imageQueue[0])
-    }
-  }, [imageQueue, isLoading, loadImage])
-
   /**
    * When the root images change, reset the loaded images
    * This needs done because currently there is no
@@ -281,10 +231,6 @@ export const ImagePickerView = () => {
   useEffect(() => {
     if (!isEqual(paginatedImages, cachedImages.current)) {
       cachedImages.current = paginatedImages
-
-      for (const image of paginatedImages) {
-        enqueueImage(image)
-      }
     }
   }, [enqueueImage, paginatedImages])
 
@@ -342,17 +288,13 @@ export const ImagePickerView = () => {
                 <option value="path">Copy Image Path</option>
                 <option value="delete">Delete Image</option>
               </select>
-              {Object.keys(loadedImages).includes(file.path) ? (
-                <img
-                  src={loadedImages[file.path]}
-                  alt={file.name}
-                  style={{ width: '100%', height: '100%' }}
-                  loading="lazy"
-                />
-              ) : (
-                // TODO: add a self-queueing system for images in this state
-                <div className="image-placeholder">⏳</div>
-              )}
+              <Thumbnail
+                key={file.path}
+                shouldLoad={imageQueue[0]?.path === file.path}
+                node={file}
+                onEnqueue={() => enqueueImage(file)}
+                dequeueImage={dequeueImage}
+              />
             </div>
           ))}
         </div>
