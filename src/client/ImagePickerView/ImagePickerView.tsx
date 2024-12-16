@@ -235,7 +235,7 @@ export const ImagePickerView = () => {
   }, [enqueueImage, paginatedImages])
 
   return (
-    <>
+    <div className="image-picker-responsive-container">
       <Search onSearch={filterImages} />
       <div
         ref={(ref) => {
@@ -307,6 +307,6 @@ export const ImagePickerView = () => {
         zoom={zoom}
         onZoom={onZoom}
       />
-    </>
+    </div>
   )
 }
