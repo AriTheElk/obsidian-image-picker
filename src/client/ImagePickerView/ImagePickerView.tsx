@@ -1,47 +1,27 @@
-import { debounce, isEqual, truncate } from 'lodash'
+import { debounce, isEqual, throttle, truncate } from 'lodash'
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react'
 import { Notice, TFile } from 'obsidian'
 
 import {
-  queryTokens,
   MOBILE_MAX_FILE_SIZE,
   DESKTOP_MAX_FILE_SIZE,
   ROW_HEIGHT,
+  DEFAULT_SETTINGS,
 } from '../../constants'
-import { copyToClipboard, getSizeInKb, nodeToEmbed } from '../../utils'
+import {
+  calculateGrid,
+  copyToClipboard,
+  getSizeInKb,
+  nodeToEmbed,
+  setGridHeight,
+  tokenizeSearchQuery,
+} from '../../utils'
 import { AbstractIndexerNode, IndexerNode } from '../../backend/Indexer'
 import { useApp, useFiles, usePlugin } from '../ImagePickerContext'
+import { Thumbnail } from '../Thumbnail'
 
 import { Pagination } from './Pagination'
 import { Search } from './Search'
-
-/**
- * Searches through a plaintext search query and
- * returns all of the tokens contained in the query.
- * Also returns the remaining query after removing
- * all of the tokens.
- */
-const tokenizeSearchQuery = (query: string) => {
-  const tokens = query
-    .split(' ')
-    .map((token) => token.trim())
-    .filter(
-      (token) =>
-        token.includes(':') && queryTokens.includes(token.split(':')[0])
-    )
-  let remainingQuery = ''
-
-  for (const token of query.split(' ')) {
-    if (!tokens.includes(token)) {
-      remainingQuery += token + ' '
-    }
-  }
-
-  return {
-    queryTokens: tokens,
-    remainingQuery: remainingQuery.trim(),
-  }
-}
 
 export const ImagePickerView = () => {
   const IS_MOBILE = useRef(document.querySelector('.is-mobile') !== null)
@@ -49,7 +29,6 @@ export const ImagePickerView = () => {
   const app = useApp()
   const images = useFiles()
   const cachedImages = useRef<IndexerNode[]>([])
-  const [searchInput, setSearchInput] = useState('')
   const [searchQuery, setSearchQuery] = useState<
     ReturnType<typeof tokenizeSearchQuery>
   >({
@@ -63,12 +42,53 @@ export const ImagePickerView = () => {
   const [columns, setColumns] = useState(0)
   const gridRef = useRef<HTMLDivElement | null>(null)
 
-  const [loadedImages, setLoadedImages] = useState<Record<string, string>>({})
-  const [nextImageIndex, setNextImageIndex] = useState(0)
+  const [imageQueue, setImageQueue] = useState<IndexerNode[]>([])
+
+  const hydratedCSS = useRef(false)
+  const [zoom, setZoom] = useState(
+    plugin.settings.zoom || DEFAULT_SETTINGS.zoom
+  )
+  const [rowHeight, setRowHeight] = useState(zoom * ROW_HEIGHT)
+
+  useEffect(() => {
+    if (!hydratedCSS.current) {
+      setGridHeight(zoom)
+      hydratedCSS.current = true
+    }
+  }, [zoom])
+
+  const updateZoomSetting = useMemo(
+    () =>
+      debounce((zoom: number) => {
+        plugin.settings.zoom = zoom
+        plugin.backgrounder.enqueue({
+          type: 'saveSettings',
+          disableDoubleQueue: true,
+          action: plugin.saveSettings,
+        })
+      }, 500),
+    [plugin.backgrounder, plugin.saveSettings, plugin.settings]
+  )
+
+  const updateVisualZoom = useCallback(
+    throttle((zoom: number) => {
+      setGridHeight(zoom)
+      setRowHeight(zoom * ROW_HEIGHT)
+    }, 50),
+    []
+  )
+
+  const onZoom = useCallback(
+    (zoom: number) => {
+      setZoom(zoom)
+      updateZoomSetting(zoom)
+      updateVisualZoom(zoom)
+    },
+    [updateVisualZoom, updateZoomSetting]
+  )
 
   useEffect(() => {
     if (columns !== prevColumns.current) {
-      setLoadedImages({})
       prevColumns.current = columns
     }
   }, [columns])
@@ -93,15 +113,9 @@ export const ImagePickerView = () => {
       debounce((query: string) => {
         setSearchQuery(tokenizeSearchQuery(query))
         setCurrentPage(1)
-        setNextImageIndex(0)
-        setLoadedImages({})
       }, 500),
     []
   )
-
-  const handleImageClick = useCallback((filePath: string) => {
-    console.log(`Image clicked: ${filePath}`)
-  }, [])
 
   const filteredImages = useMemo(() => {
     const { queryTokens, remainingQuery } = searchQuery
@@ -120,7 +134,7 @@ export const ImagePickerView = () => {
                 return false
               break
             default:
-              // throw new Error(`Unknown query token: ${key}`)
+              console.warn(`Unknown query token: ${key}`)
               break
           }
         }
@@ -136,37 +150,15 @@ export const ImagePickerView = () => {
       .sort((a, b) => b.stat.ctime - a.stat.ctime)
   }, [images, app.vault, searchQuery])
 
-  const calculateGrid = useCallback(
-    (containerSize: number, assetSize: number) => {
-      if (gridRef.current) {
-        const computedStyle = window.getComputedStyle(gridRef.current)
-        const gap = parseInt(computedStyle.getPropertyValue('gap'), 10) || 0
-        const totalGapsWidth =
-          containerSize < assetSize * 2 + gap
-            ? 0
-            : gap * (Math.floor(containerSize / assetSize) - 1)
-        const newColumns = Math.floor(
-          (containerSize - totalGapsWidth) / assetSize
-        )
-        return newColumns
-      }
-      return 0
-    },
-    []
-  )
-
   const updateCalculations = useCallback(
     (container: HTMLDivElement) => {
       const height = container.clientHeight
       const width = container.clientWidth
-
-      const newRows = Math.floor(height / ROW_HEIGHT)
-      const newColumns = calculateGrid(width, 100)
-
-      setColumns(newColumns)
-      setItemsPerPage(newRows * newColumns)
+      const [col, row] = calculateGrid(gridRef, [width, height], rowHeight)
+      setColumns(col)
+      setItemsPerPage(col * row)
     },
-    [calculateGrid]
+    [rowHeight]
   )
 
   useEffect(() => {
@@ -202,14 +194,10 @@ export const ImagePickerView = () => {
   const totalPages = Math.ceil(filteredImages.length / itemsPerPage)
 
   const handlePrevPage = () => {
-    setNextImageIndex(0)
-    setLoadedImages({})
     setCurrentPage((prev) => Math.max(prev - 1, 1))
   }
 
   const handleNextPage = () => {
-    setNextImageIndex(0)
-    setLoadedImages({})
     setCurrentPage((prev) => Math.min(prev + 1, totalPages))
   }
 
@@ -220,48 +208,19 @@ export const ImagePickerView = () => {
     setCurrentPage(1)
   }, [searchQuery])
 
-  /**
-   * Recursively load the next image in the list
-   * until all images are loaded
-   */
-  const loadNextImage = useCallback(
-    async (imageIndex: number) => {
-      try {
-        if (imageIndex < paginatedImages.length) {
-          const file = await plugin.indexer.getAbstractNode(
-            paginatedImages[imageIndex]
-          )
-          const img = new Image()
-          img.src = file.thumbnail.data
-
-          const onLoad = () => {
-            setLoadedImages((prev) => ({
-              ...prev,
-              [file.path]: file.thumbnail.data,
-            }))
-            loadNextImage(imageIndex + 1)
-          }
-
-          img.addEventListener('load', onLoad)
-        }
-      } catch (_) {
-        console.warn('FAILED:', paginatedImages[imageIndex])
-        plugin.indexer.removeIndex(paginatedImages[imageIndex].path)
-        setNextImageIndex((prev) => prev + 1)
-        loadNextImage(imageIndex + 1)
+  const enqueueImage = useCallback(
+    (node: IndexerNode) => {
+      if (imageQueue.includes(node)) {
+        return
       }
+      setImageQueue((prev) => [...prev, node])
     },
-    [paginatedImages, plugin.indexer]
+    [imageQueue]
   )
 
-  /**
-   * Load the first image when the component mounts
-   */
-  useEffect(() => {
-    if (Object.keys(loadedImages).length === 0) {
-      loadNextImage(nextImageIndex)
-    }
-  }, [loadNextImage, loadedImages, nextImageIndex])
+  const dequeueImage = useCallback((node: IndexerNode) => {
+    setImageQueue((prev) => prev.filter((n) => n.path !== node.path))
+  }, [])
 
   /**
    * When the root images change, reset the loaded images
@@ -270,18 +229,27 @@ export const ImagePickerView = () => {
    * Image Picker doesn't know there are unloaded images.
    */
   useEffect(() => {
-    if (!isEqual(images, cachedImages.current)) {
-      console.log('Images changed:', images.length)
-      setLoadedImages({})
-      setNextImageIndex(0)
-      setCurrentPage(1)
-      cachedImages.current = images
+    if (!isEqual(paginatedImages, cachedImages.current)) {
+      cachedImages.current = paginatedImages
     }
-  }, [images])
+  }, [enqueueImage, paginatedImages])
 
   return (
-    <>
+    <div className="image-picker-responsive-container">
       <Search onSearch={filterImages} />
+      <div
+        className="search-results-info"
+        style={{ padding: 0, marginBottom: '1rem', borderBottom: 'none' }}
+      >
+        {filteredImages.length ? (
+          <div className="search-results-result-count">
+            {filteredImages.length} images found.{' '}
+            {totalPages > 1 ? `Page ${currentPage} of ${totalPages}` : ''}
+          </div>
+        ) : (
+          <p>No images found</p>
+        )}
+      </div>
       <div
         ref={(ref) => {
           if (!ref) return
@@ -298,7 +266,6 @@ export const ImagePickerView = () => {
             <div
               key={file.path}
               className="image-picker-item"
-              onClick={() => handleImageClick(file.path)}
               style={{
                 gridRow: Math.floor(i / columns) + 1,
                 gridColumn: (i % columns) + 1,
@@ -334,17 +301,25 @@ export const ImagePickerView = () => {
                 <option value="path">Copy Image Path</option>
                 <option value="delete">Delete Image</option>
               </select>
-              {Object.keys(loadedImages).includes(file.path) ? (
-                <img
-                  src={loadedImages[file.path]}
-                  alt={file.name}
-                  style={{ width: '100%', height: '100%' }}
-                  loading="lazy"
-                />
-              ) : (
-                // TODO: add a self-queueing system for images in this state
-                <div className="image-placeholder">⏳</div>
-              )}
+              <Thumbnail
+                key={file.path}
+                shouldLoad={imageQueue[0]?.path === file.path}
+                node={file}
+                enqueueImage={enqueueImage}
+                dequeueImage={dequeueImage}
+              />
+            </div>
+          ))}
+          {[...Array(itemsPerPage - paginatedImages.length)].map((_, i) => (
+            <div
+              key={`empty-${i}`}
+              className="image-picker-item"
+              style={{
+                gridRow: Math.floor((i + paginatedImages.length) / columns) + 1,
+                gridColumn: ((i + paginatedImages.length) % columns) + 1,
+              }}
+            >
+              <div className="image-placeholder"></div>
             </div>
           ))}
         </div>
@@ -354,7 +329,9 @@ export const ImagePickerView = () => {
         current={currentPage}
         onNext={handleNextPage}
         onPrev={handlePrevPage}
+        zoom={zoom}
+        onZoom={onZoom}
       />
-    </>
+    </div>
   )
 }

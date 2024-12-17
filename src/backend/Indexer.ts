@@ -11,8 +11,6 @@ import {
 } from '../utils'
 import ImagePicker from '../main'
 
-import { Backgrounder } from './Backgrounder'
-
 export interface IndexerRoot {
   [path: string]: IndexerNode
 }
@@ -54,10 +52,8 @@ class IndexerDB extends Dexie {
 export class Indexer {
   private memory: IndexerRoot = {}
   private db: IndexerDB = new IndexerDB()
-  private backgrounder: Backgrounder
 
   constructor(public plugin: ImagePicker) {
-    this.backgrounder = new Backgrounder(this.plugin)
     this.getIndex().then((root) => {
       this.log('Loaded index:', root)
     })
@@ -111,7 +107,7 @@ export class Indexer {
     this.memory[node.path] = { ...node, thumbnail: id }
     this.log('Generated thumbnail:', id)
 
-    this.backgrounder.enqueue({
+    this.plugin.backgrounder.enqueue({
       type: 'saveIndex',
       disableDoubleQueue: true,
       action: this.saveIndex,
@@ -151,7 +147,7 @@ export class Indexer {
     }
 
     this.memory = merge({}, this.memory, root)
-    this.backgrounder.enqueue({
+    this.plugin.backgrounder.enqueue({
       type: 'saveIndex',
       disableDoubleQueue: true,
       action: this.saveIndex,
@@ -170,7 +166,7 @@ export class Indexer {
       await this.db.thumbnails.delete(node.thumbnail)
     }
     this.notifySubscribers()
-    this.backgrounder.enqueue({
+    this.plugin.backgrounder.enqueue({
       type: 'saveIndex',
       disableDoubleQueue: true,
       action: this.saveIndex,

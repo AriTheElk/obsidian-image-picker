@@ -1,7 +1,7 @@
 import { readAndCompressImage } from 'browser-image-resizer'
 
 import { AbstractIndexerNode, IndexerNode } from './backend/Indexer'
-import { ROW_HEIGHT } from './constants'
+import { queryTokens, ROW_HEIGHT } from './constants'
 
 export const getSizeInKb = (size: number): number => {
   return Math.round(size / 1024)
@@ -73,4 +73,66 @@ export const nodeToEmbed = (
 
 export const truncate = (text: string, length: number): string => {
   return text.length > length ? `${text.substring(0, length)}...` : text
+}
+
+export const setGridHeight = (zoom: number): void => {
+  document.documentElement.style.setProperty(
+    '--image-picker-grid-height',
+    ROW_HEIGHT * zoom + 'px'
+  )
+}
+
+/**
+ * Returns the number of columns and rows that can fit in the container
+ *
+ * The height is always fixed, so we first calculate the rnumber of
+ * columns that can fit in the container, then calculate the number of
+ * rows based on the container size and the asset height.
+ */
+export const calculateGrid = (
+  gridRef: React.RefObject<HTMLDivElement | null>,
+  containerSize: [number, number],
+  assetHeight: number
+): [number, number] => {
+  if (gridRef.current) {
+    const [containerWidth, containerHeight] = containerSize
+    const computedStyle = window.getComputedStyle(gridRef.current)
+    const gap = parseInt(computedStyle.getPropertyValue('gap'), 10) || 0
+    const totalGapsWidth =
+      containerWidth < assetHeight * 2 + gap
+        ? 0
+        : gap * (Math.floor(containerWidth / assetHeight) - 1)
+    const columns = Math.floor((containerWidth - totalGapsWidth) / assetHeight)
+    const rows = Math.floor(containerHeight / (assetHeight + gap))
+    return [columns, rows]
+  }
+  return [0, 0]
+}
+
+/**
+ * Searches through a plaintext search query and
+ * returns all of the tokens contained in the query.
+ * Also returns the remaining query after removing
+ * all of the tokens.
+ */
+export const tokenizeSearchQuery = (query: string) => {
+  const tokens = query
+    .split(' ')
+    .map((token) => token.trim())
+    .filter(
+      (token) =>
+        token.includes(':') && queryTokens.includes(token.split(':')[0])
+    )
+  let remainingQuery = ''
+
+  for (const token of query.split(' ')) {
+    if (!tokens.includes(token)) {
+      remainingQuery += token + ' '
+    }
+  }
+
+  return {
+    queryTokens: tokens,
+    remainingQuery: remainingQuery.trim(),
+  }
 }

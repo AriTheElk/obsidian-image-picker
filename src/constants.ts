@@ -46,4 +46,14 @@ export const DEFAULT_SETTINGS: ImagePickerSettings = {
   imageFolder: '',
   animateGifs: false,
   debugMode: false,
+  zoom: 1,
 }
+
+/**
+ * The min/max thumbnail zoom for the image picker
+ *
+ * The zoom is applied to the baseline ROW_HEIGHT
+ * to determine the thumbnail size.
+ */
+export const MIN_THUMBNAIL_ZOOM = 0.5
+export const MAX_THUMBNAIL_ZOOM = 2
