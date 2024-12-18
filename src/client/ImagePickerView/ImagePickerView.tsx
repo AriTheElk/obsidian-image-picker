@@ -16,7 +16,7 @@ import {
   setGridHeight,
   tokenizeSearchQuery,
 } from '../../utils'
-import { AbstractIndexerNode, IndexerNode } from '../../backend/Indexer'
+import { AbstractIndexerNode, IndexerNode } from '../../Indexer'
 import { useApp, useFiles, usePlugin } from '../ImagePickerContext'
 import { Thumbnail } from '../Thumbnail'
 
@@ -61,13 +61,9 @@ export const ImagePickerView = () => {
     () =>
       debounce((zoom: number) => {
         plugin.settings.zoom = zoom
-        plugin.backgrounder.enqueue({
-          type: 'saveSettings',
-          disableDoubleQueue: true,
-          action: plugin.saveSettings,
-        })
+        plugin.sleepySaveSettings()
       }, 500),
-    [plugin.backgrounder, plugin.saveSettings, plugin.settings]
+    [plugin]
   )
 
   const updateVisualZoom = useCallback(

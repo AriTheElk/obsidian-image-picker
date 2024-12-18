@@ -1,6 +1,6 @@
 import React, { FC, useCallback, useEffect, useRef, useState } from 'react'
 
-import { AbstractIndexerNode, IndexerNode } from '../backend/Indexer'
+import { AbstractIndexerNode, IndexerNode } from '../Indexer'
 
 import { usePlugin } from './ImagePickerContext'
 

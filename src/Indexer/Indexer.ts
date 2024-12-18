@@ -1,7 +1,5 @@
-import { TFile } from 'obsidian'
 import { debounce, merge } from 'lodash'
 import { v4 } from 'uuid'
-import Dexie from 'dexie'
 
 import {
   fetchImageFile,
@@ -9,45 +7,16 @@ import {
   imageToArrayBuffer,
   makeThumbnail,
 } from '../utils'
-import ImagePicker from '../main'
+import { ImagePicker } from '../ImagePicker'
 
-export interface IndexerRoot {
-  [path: string]: IndexerNode
-}
-
-export interface IndexerNode
-  extends Pick<TFile, 'basename' | 'extension' | 'stat' | 'path' | 'name'> {
-  uri: string
-  thumbnail?: string
-}
-
-export interface AbstractIndexerRoot {
-  [path: string]: AbstractIndexerNode
-}
-
-export interface AbstractIndexerNode extends Omit<IndexerNode, 'thumbnail'> {
-  thumbnail: Thumbnail
-}
-
-export interface Thumbnail {
-  id: string
-  data: string
-}
-
-class IndexerDB extends Dexie {
-  index: Dexie.Table<IndexerNode, string>
-  thumbnails: Dexie.Table<Thumbnail, string>
-
-  constructor() {
-    super('IndexerDB')
-    this.version(1).stores({
-      index: 'path',
-      thumbnails: 'id',
-    })
-    this.index = this.table('index')
-    this.thumbnails = this.table('thumbnails')
-  }
-}
+import {
+  IndexerNode,
+  Thumbnail,
+  IndexerRoot,
+  AbstractIndexerRoot,
+  AbstractIndexerNode,
+} from './types'
+import { IndexerDB } from './IndexerDB'
 
 export class Indexer {
   private memory: IndexerRoot = {}
@@ -58,6 +27,13 @@ export class Indexer {
       this.log('Loaded index:', root)
     })
     // this.flush()
+
+    this.plugin.backgrounder.createLane({
+      type: 'saveIndex',
+      sleep: 2000,
+      unique: true,
+      uniqueKeep: 'first',
+    })
   }
 
   flush = async () => {
@@ -70,7 +46,7 @@ export class Indexer {
     this.db = new IndexerDB()
   }
 
-  log = (...args: any[]) => {
+  log = (...args: unknown[]) => {
     this.plugin.log('Indexer -> ', ...args)
   }
 
@@ -107,9 +83,8 @@ export class Indexer {
     this.memory[node.path] = { ...node, thumbnail: id }
     this.log('Generated thumbnail:', id)
 
-    this.plugin.backgrounder.enqueue({
-      type: 'saveIndex',
-      disableDoubleQueue: true,
+    this.plugin.backgrounder.lanes.saveIndex.enqueue({
+      type: 'saveLatestIndex',
       action: this.saveIndex,
     })
 
@@ -128,9 +103,9 @@ export class Indexer {
 
   saveIndex = debounce(async () => {
     try {
-      const prev = await this.getIndex()
-      await this.db.index.bulkPut(Object.values(merge({}, prev, this.memory)))
+      const index = await this.getIndex()
       this.memory = {}
+      await this.db.index.bulkPut(Object.values(index))
       this.notifySubscribers()
     } catch (e) {
       console.error('Failed to save index:', e)
@@ -142,14 +117,12 @@ export class Indexer {
     const acc: IndexerNode[] = []
 
     for (const node of nodes) {
-      // const thumbnail = await this.getThumbnail(node)
       acc.push(node)
     }
 
     this.memory = merge({}, this.memory, root)
-    this.plugin.backgrounder.enqueue({
-      type: 'saveIndex',
-      disableDoubleQueue: true,
+    this.plugin.backgrounder.lanes.saveIndex.enqueue({
+      type: 'saveLatestIndex',
       action: this.saveIndex,
     })
   }
@@ -166,9 +139,8 @@ export class Indexer {
       await this.db.thumbnails.delete(node.thumbnail)
     }
     this.notifySubscribers()
-    this.plugin.backgrounder.enqueue({
-      type: 'saveIndex',
-      disableDoubleQueue: true,
+    this.plugin.backgrounder.lanes.saveIndex.enqueue({
+      type: 'saveLatestIndex',
       action: this.saveIndex,
     })
   }
@@ -220,10 +192,10 @@ export class Indexer {
     }
   }
 
-  notifySubscribers = (index?: IndexerRoot) => {
+  notifySubscribers = debounce((index?: IndexerRoot) => {
     this.log('Notifying subscribers:', this.subscribers.length)
     this.subscribers.forEach(async (callback) =>
       callback(index || (await this.getIndex()))
     )
-  }
+  }, 250)
 }
