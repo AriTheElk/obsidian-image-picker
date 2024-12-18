@@ -1,7 +1,5 @@
-import { TFile } from 'obsidian'
 import { debounce, merge } from 'lodash'
 import { v4 } from 'uuid'
-import Dexie from 'dexie'
 
 import {
   fetchImageFile,
@@ -9,45 +7,16 @@ import {
   imageToArrayBuffer,
   makeThumbnail,
 } from '../utils'
-import ImagePicker from '../main'
+import { ImagePicker } from '../ImagePicker'
 
-export interface IndexerRoot {
-  [path: string]: IndexerNode
-}
-
-export interface IndexerNode
-  extends Pick<TFile, 'basename' | 'extension' | 'stat' | 'path' | 'name'> {
-  uri: string
-  thumbnail?: string
-}
-
-export interface AbstractIndexerRoot {
-  [path: string]: AbstractIndexerNode
-}
-
-export interface AbstractIndexerNode extends Omit<IndexerNode, 'thumbnail'> {
-  thumbnail: Thumbnail
-}
-
-export interface Thumbnail {
-  id: string
-  data: string
-}
-
-class IndexerDB extends Dexie {
-  index: Dexie.Table<IndexerNode, string>
-  thumbnails: Dexie.Table<Thumbnail, string>
-
-  constructor() {
-    super('IndexerDB')
-    this.version(1).stores({
-      index: 'path',
-      thumbnails: 'id',
-    })
-    this.index = this.table('index')
-    this.thumbnails = this.table('thumbnails')
-  }
-}
+import {
+  IndexerNode,
+  Thumbnail,
+  IndexerRoot,
+  AbstractIndexerRoot,
+  AbstractIndexerNode,
+} from './types'
+import { IndexerDB } from './IndexerDB'
 
 export class Indexer {
   private memory: IndexerRoot = {}
@@ -77,7 +46,7 @@ export class Indexer {
     this.db = new IndexerDB()
   }
 
-  log = (...args: any[]) => {
+  log = (...args: unknown[]) => {
     this.plugin.log('Indexer -> ', ...args)
   }
 

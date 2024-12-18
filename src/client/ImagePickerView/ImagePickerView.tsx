@@ -16,7 +16,7 @@ import {
   setGridHeight,
   tokenizeSearchQuery,
 } from '../../utils'
-import { AbstractIndexerNode, IndexerNode } from '../../backend/Indexer'
+import { AbstractIndexerNode, IndexerNode } from '../../Indexer'
 import { useApp, useFiles, usePlugin } from '../ImagePickerContext'
 import { Thumbnail } from '../Thumbnail'
 

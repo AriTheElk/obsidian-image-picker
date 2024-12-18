@@ -1,7 +1,7 @@
 import { App, Plugin, PluginManifest, TFile, WorkspaceLeaf } from 'obsidian'
 import { pick } from 'lodash'
 
-import { Indexer } from './backend/Indexer'
+import { Indexer } from './Indexer'
 import {
   ImagePickerSettings,
   ImagePickerSettingTab,
@@ -12,7 +12,7 @@ import {
   VALID_IMAGE_EXTENSIONS,
   VIEW_TYPE_IMAGE_PICKER,
 } from './constants'
-import { Backgrounder } from './backend/Backgrounder'
+import { Backgrounder } from './Backgrounder'
 
 export class ImagePicker extends Plugin {
   settings: ImagePickerSettings
@@ -27,7 +27,7 @@ export class ImagePicker extends Plugin {
     super(app, manifest)
   }
 
-  log = (...args: any[]) => {
+  log = (...args: unknown[]) => {
     if (this.settings?.debugMode) {
       console.log('ImagePicker -> ', ...args)
     }

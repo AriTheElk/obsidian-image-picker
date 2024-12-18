@@ -1,6 +1,6 @@
 import { readAndCompressImage } from 'browser-image-resizer'
 
-import { AbstractIndexerNode, IndexerNode } from './backend/Indexer'
+import { AbstractIndexerNode, IndexerNode } from './Indexer'
 import { queryTokens, ROW_HEIGHT } from './constants'
 
 export const getSizeInKb = (size: number): number => {
