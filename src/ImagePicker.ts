@@ -1,4 +1,4 @@
-import { Plugin, TFile, WorkspaceLeaf } from 'obsidian'
+import { App, Plugin, PluginManifest, TFile, WorkspaceLeaf } from 'obsidian'
 import { pick } from 'lodash'
 
 import { Indexer } from './backend/Indexer'
@@ -18,7 +18,14 @@ export class ImagePicker extends Plugin {
   settings: ImagePickerSettings
   images: TFile[] = []
   indexer: Indexer = new Indexer(this)
-  backgrounder: Backgrounder = new Backgrounder(this)
+  _backgrounder: Backgrounder
+  get backgrounder() {
+    return this._backgrounder || (this._backgrounder = new Backgrounder(this))
+  }
+
+  constructor(app: App, manifest: PluginManifest) {
+    super(app, manifest)
+  }
 
   log = (...args: any[]) => {
     if (this.settings?.debugMode) {
@@ -43,13 +50,20 @@ export class ImagePicker extends Plugin {
     this.app.vault.on('create', this.onFileCreate)
     this.app.vault.on('modify', this.onFileChange)
     this.app.vault.on('delete', this.onFileDelete)
+
+    this.backgrounder.createLane({
+      type: 'saveSettings',
+      sleep: 2000,
+      unique: true,
+      uniqueKeep: 'last',
+    })
   }
 
   onunload() {
     this.app.vault.off('create', this.onFileCreate)
     this.app.vault.off('modify', this.onFileChange)
     this.app.vault.off('delete', this.onFileDelete)
-    this.backgrounder.clear()
+    this.backgrounder.stopAll()
   }
   /**
    * When a file is created, add it to the index and
@@ -140,5 +154,12 @@ export class ImagePicker extends Plugin {
   saveSettings = async () => {
     this.log('Saving settings:', this.settings)
     await this.saveData(this.settings)
+  }
+
+  sleepySaveSettings = async () => {
+    await this.backgrounder.lanes.saveSettings.enqueue({
+      type: 'sleepySaveSettings',
+      action: this.saveSettings,
+    })
   }
 }

@@ -58,6 +58,13 @@ export class Indexer {
       this.log('Loaded index:', root)
     })
     // this.flush()
+
+    this.plugin.backgrounder.createLane({
+      type: 'saveIndex',
+      sleep: 2000,
+      unique: true,
+      uniqueKeep: 'first',
+    })
   }
 
   flush = async () => {
@@ -107,9 +114,8 @@ export class Indexer {
     this.memory[node.path] = { ...node, thumbnail: id }
     this.log('Generated thumbnail:', id)
 
-    this.plugin.backgrounder.enqueue({
-      type: 'saveIndex',
-      disableDoubleQueue: true,
+    this.plugin.backgrounder.lanes.saveIndex.enqueue({
+      type: 'saveLatestIndex',
       action: this.saveIndex,
     })
 
@@ -128,9 +134,9 @@ export class Indexer {
 
   saveIndex = debounce(async () => {
     try {
-      const prev = await this.getIndex()
-      await this.db.index.bulkPut(Object.values(merge({}, prev, this.memory)))
+      const index = await this.getIndex()
       this.memory = {}
+      await this.db.index.bulkPut(Object.values(index))
       this.notifySubscribers()
     } catch (e) {
       console.error('Failed to save index:', e)
@@ -142,14 +148,12 @@ export class Indexer {
     const acc: IndexerNode[] = []
 
     for (const node of nodes) {
-      // const thumbnail = await this.getThumbnail(node)
       acc.push(node)
     }
 
     this.memory = merge({}, this.memory, root)
-    this.plugin.backgrounder.enqueue({
-      type: 'saveIndex',
-      disableDoubleQueue: true,
+    this.plugin.backgrounder.lanes.saveIndex.enqueue({
+      type: 'saveLatestIndex',
       action: this.saveIndex,
     })
   }
@@ -166,9 +170,8 @@ export class Indexer {
       await this.db.thumbnails.delete(node.thumbnail)
     }
     this.notifySubscribers()
-    this.plugin.backgrounder.enqueue({
-      type: 'saveIndex',
-      disableDoubleQueue: true,
+    this.plugin.backgrounder.lanes.saveIndex.enqueue({
+      type: 'saveLatestIndex',
       action: this.saveIndex,
     })
   }
@@ -220,10 +223,10 @@ export class Indexer {
     }
   }
 
-  notifySubscribers = (index?: IndexerRoot) => {
+  notifySubscribers = debounce((index?: IndexerRoot) => {
     this.log('Notifying subscribers:', this.subscribers.length)
     this.subscribers.forEach(async (callback) =>
       callback(index || (await this.getIndex()))
     )
-  }
+  }, 250)
 }
