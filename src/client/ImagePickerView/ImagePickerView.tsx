@@ -65,11 +65,12 @@ export const ImagePickerView = () => {
     [plugin]
   )
 
-  const updateVisualZoom = useCallback(
-    throttle((zoom: number) => {
-      setGridHeight(zoom)
-      setRowHeight(zoom * ROW_HEIGHT)
-    }, 50),
+  const updateVisualZoom = useMemo(
+    () =>
+      throttle((zoom: number) => {
+        setGridHeight(zoom)
+        setRowHeight(zoom * ROW_HEIGHT)
+      }, 50),
     []
   )
 
