@@ -38,7 +38,7 @@ export class ImagePicker extends Plugin {
 
     this.addSettingTab(new ImagePickerSettingTab(this.app, this))
 
-    this.addRibbonIcon('image', 'Open Image Picker', async () => {
+    this.addRibbonIcon('image', 'Open image picker', async () => {
       this.activateView()
     })
 

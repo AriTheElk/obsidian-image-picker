@@ -1,6 +1,6 @@
 import { debounce, isEqual, throttle, truncate } from 'lodash'
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react'
-import { Notice, TFile } from 'obsidian'
+import { Notice, Platform, TFile } from 'obsidian'
 
 import {
   MOBILE_MAX_FILE_SIZE,
@@ -24,7 +24,6 @@ import { Pagination } from './Pagination'
 import { Search } from './Search'
 
 export const ImagePickerView = () => {
-  const IS_MOBILE = useRef(document.querySelector('.is-mobile') !== null)
   const plugin = usePlugin()
   const app = useApp()
   const images = useFiles()
@@ -66,11 +65,12 @@ export const ImagePickerView = () => {
     [plugin]
   )
 
-  const updateVisualZoom = useCallback(
-    throttle((zoom: number) => {
-      setGridHeight(zoom)
-      setRowHeight(zoom * ROW_HEIGHT)
-    }, 50),
+  const updateVisualZoom = useMemo(
+    () =>
+      throttle((zoom: number) => {
+        setGridHeight(zoom)
+        setRowHeight(zoom * ROW_HEIGHT)
+      }, 50),
     []
   )
 
@@ -137,7 +137,7 @@ export const ImagePickerView = () => {
 
         if (
           getSizeInKb(file.stat.size) >
-          (IS_MOBILE.current ? MOBILE_MAX_FILE_SIZE : DESKTOP_MAX_FILE_SIZE)
+          (Platform.isMobile ? MOBILE_MAX_FILE_SIZE : DESKTOP_MAX_FILE_SIZE)
         )
           return false
 
@@ -293,9 +293,9 @@ export const ImagePickerView = () => {
                     length: 30,
                   })}
                 </option>
-                <option value="copy">Copy Image Embed</option>
-                <option value="path">Copy Image Path</option>
-                <option value="delete">Delete Image</option>
+                <option value="copy">Copy image embed</option>
+                <option value="path">Copy image path</option>
+                <option value="delete">Delete image</option>
               </select>
               <Thumbnail
                 key={file.path}

@@ -23,13 +23,13 @@ export class ImagePickerSettingTab extends PluginSettingTab {
 
     // Input for selecting the image folder
     new Setting(containerEl)
-      .setName('Image Folder')
+      .setName('Image folder')
       .setDesc(
         'Image picker will look for images in this folder and its subfolders, by default it will look in the root of the vault'
       )
       .addText((text) =>
         text
-          .setPlaceholder('Image Folder')
+          .setPlaceholder('Image folder')
           .setValue(this.plugin.settings.imageFolder)
           .onChange(async (value) => {
             this.plugin.settings.imageFolder = value || ''
@@ -39,12 +39,12 @@ export class ImagePickerSettingTab extends PluginSettingTab {
 
     // Button for resetting the image index
     new Setting(containerEl)
-      .setName('Reset Image Index')
+      .setName('Reset image index')
       .setDesc(
         'Clears the image index and rebuilds it from the image folder. Obsidian will reload immediately after. Please run this after changing the image folder.'
       )
       .addButton((button) =>
-        button.setButtonText('Reset Index').onClick(async () => {
+        button.setButtonText('Reset index').onClick(async () => {
           this.plugin.images = []
           // delete the database and rebuild it
           await this.plugin.indexer.resetDB()
@@ -57,7 +57,7 @@ export class ImagePickerSettingTab extends PluginSettingTab {
     // Toggle whether gifs are animated
     new Setting(containerEl)
       .setName('Animate GIFs')
-      .setDesc('Warning: large gifs can slow down or crash Obsidian')
+      .setDesc('Warning: large GIFs can slow down or crash Obsidian')
       .addToggle((toggle) =>
         toggle
           .setValue(this.plugin.settings.animateGifs)
@@ -69,7 +69,7 @@ export class ImagePickerSettingTab extends PluginSettingTab {
 
     // Toggle whether to log debug messages
     new Setting(containerEl)
-      .setName('Debug Mode')
+      .setName('Debug mode')
       .setDesc('Log debug messages to the console')
       .addToggle((toggle) =>
         toggle

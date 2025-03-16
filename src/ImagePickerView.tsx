@@ -24,7 +24,7 @@ export class ImagePickerView extends ItemView {
   }
 
   getDisplayText() {
-    return 'Image Picker'
+    return 'Image picker'
   }
 
   getIcon(): string {
